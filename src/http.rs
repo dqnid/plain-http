@@ -8,16 +8,23 @@ pub struct ProcessedResponse {
     status: u8,
 }
 
+type QueryParams = HashMap<String, String>;
+type Headers = HashMap<String, String>;
+
+struct HttpRequestQuery {
+    path: String,
+    params: QueryParams,
+}
+
 struct HttpRequestLine {
     method: String,
     version: f32,
-    path: String,
-    params: HashMap<String, String>,
+    query: HttpRequestQuery,
 }
 
 struct HttpRequest {
     request: HttpRequestLine,
-    headers: HashMap<String, String>,
+    headers: Headers,
     body: String,
 }
 
@@ -67,6 +74,29 @@ fn parse_request(request_raw: String) -> Result<HttpRequest, i16> {
     Err(400)
 }
 
-fn parse_request_line(request_line: String) -> HttpRequestLine {
-    if let Some((method, path, version)) = request_line.split_whitespace() {}
+fn parse_request_block(request_block: &str) -> Result<HttpRequestLine, i16> {
+    let request_components: Vec<&str> = request_block.split(" ").collect();
+
+    if let Ok(array) = request_components.try_into() {
+        if let Ok(query) = parse_query(query) {
+            return Ok(HttpRequestLine {
+                method,
+                version,
+                query,
+            });
+        }
+    }
+    Err(400)
 }
+
+fn parse_query(query: &str) -> Result<HttpRequestQuery, i16> {
+    if let Some((path, params)) = query.split_once("?") {
+        return Ok(HttpRequestQuery {
+            path: path.to_string(),
+            params: parse_query_params(params),
+        });
+    };
+    Err(400)
+}
+
+fn parse_query_params(query: &str) -> QueryParams {}
