@@ -11,35 +11,34 @@ pub struct ProcessedResponse {
 type QueryParams = HashMap<String, String>;
 type Headers = HashMap<String, String>;
 
-struct HttpRequestQuery {
-    path: String,
+#[derive(Debug)]
+struct HttpRequestQuery<'a> {
+    path: &'a str,
     params: QueryParams,
 }
 
-struct HttpRequestLine {
-    method: String,
-    version: f32,
-    query: HttpRequestQuery,
+#[derive(Debug)]
+struct HttpRequestLine<'a> {
+    method: &'a str,
+    version: &'a str,
+    query: HttpRequestQuery<'a>,
 }
 
-struct HttpRequest {
-    request: HttpRequestLine,
+#[derive(Debug)]
+struct HttpRequest<'a> {
+    request: HttpRequestLine<'a>,
     headers: Headers,
-    body: String,
+    body: Option<String>,
 }
 
 pub fn process_petition(stream: &mut TcpStream) -> std::io::Result<ProcessedResponse> {
-    let mut buffer = [0; 1024];
+    let mut buffer = [0; 1024]; // TODO: manage this size
 
     let _amount = stream.read(&mut buffer)?;
 
     let petition = String::from_utf8_lossy(&buffer[..]);
 
-    let petition = petition.split("\n");
-
-    for line in petition {
-        println!("PART: {}", line)
-    }
+    let petition = parse_request(&petition);
 
     let response_status = "200 OK";
 
@@ -58,13 +57,15 @@ pub fn process_petition(stream: &mut TcpStream) -> std::io::Result<ProcessedResp
     Ok(response)
 }
 
-fn parse_request(request_raw: String) -> Result<HttpRequest, i16> {
+fn parse_request(request_raw: &str) -> Result<HttpRequest, i16> {
     // TODO: study if better to use match
     if let Some((heading, rest)) = request_raw.split_once("\n") {
         // Process heading
         // split heading with split_whitespace
         // for (i, line) in request_raw.enumerate() {
         // }
+        let request = parse_request_block(heading);
+        println!("This is a raw request: {:?}", request);
         if let Some((headers, body)) = rest.split_once("\n\n") {
             // Process headers and body
             // split headers over ":"
@@ -75,28 +76,46 @@ fn parse_request(request_raw: String) -> Result<HttpRequest, i16> {
 }
 
 fn parse_request_block(request_block: &str) -> Result<HttpRequestLine, i16> {
-    let request_components: Vec<&str> = request_block.split(" ").collect();
+    let [method, query, version]: [&str; 3] = request_block
+        .split_whitespace()
+        .collect::<Vec<&str>>()
+        .try_into()
+        .unwrap(); // FIXME: check this out
 
-    if let Ok(array) = request_components.try_into() {
-        if let Ok(query) = parse_query(query) {
-            return Ok(HttpRequestLine {
-                method,
-                version,
-                query,
-            });
-        }
+    if let Ok(query) = parse_query(query) {
+        return Ok(HttpRequestLine {
+            method,
+            version,
+            query,
+        });
     }
     Err(400)
 }
 
 fn parse_query(query: &str) -> Result<HttpRequestQuery, i16> {
     if let Some((path, params)) = query.split_once("?") {
-        return Ok(HttpRequestQuery {
-            path: path.to_string(),
-            params: parse_query_params(params),
-        });
+        if let Ok(params) = parse_query_params(params) {
+            return Ok(HttpRequestQuery { path, params });
+        }
     };
+
+    match query.split_once("?") {
+        Some((path, params)) => {
+            if let Ok(params) = parse_query_params(params) {
+                return Ok(HttpRequestQuery { path, params });
+            }
+        }
+        None => {
+            return Ok(HttpRequestQuery {
+                path: query,
+                params: HashMap::new(),
+            })
+        }
+    }
     Err(400)
 }
 
-fn parse_query_params(query: &str) -> QueryParams {}
+fn parse_query_params(query: &str) -> Result<QueryParams, i16> {
+    Ok(HashMap::new())
+    // Err(400)
+}
