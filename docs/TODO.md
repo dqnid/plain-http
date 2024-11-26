@@ -1,4 +1,5 @@
 # TODO
+- [ ] Manage requests
 - [ ] Router
 - [ ] HTTP code mapper
 - [ ] JS / CSS data

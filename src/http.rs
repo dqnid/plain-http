@@ -5,16 +5,16 @@ use std::net::TcpStream;
 
 pub struct ProcessedResponse {
     pub data: String,
-    status: u8,
+    status: u16,
 }
 
-type QueryParams = HashMap<String, String>;
+type QueryParams<'a> = HashMap<&'a str, &'a str>;
 type Headers = HashMap<String, String>;
 
 #[derive(Debug)]
 struct HttpRequestQuery<'a> {
     path: &'a str,
-    params: QueryParams,
+    params: QueryParams<'a>,
 }
 
 #[derive(Debug)]
@@ -33,31 +33,40 @@ struct HttpRequest<'a> {
 
 pub fn process_petition(stream: &mut TcpStream) -> std::io::Result<ProcessedResponse> {
     let mut buffer = [0; 1024]; // TODO: manage this size
-
     let _amount = stream.read(&mut buffer)?;
-
     let petition = String::from_utf8_lossy(&buffer[..]);
-
     let petition = parse_request(&petition);
 
-    let response_status = "200 OK";
+    match petition {
+        Ok(petition_parsed) => {
+            let response_status = "200 OK";
 
-    let response_content = fs::read_to_string("./index.html").unwrap();
+            let response_content = fs::read_to_string("./index.html").unwrap();
 
-    let response: ProcessedResponse = ProcessedResponse {
-        data: format!(
-            "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
-            response_status,
-            response_content.len(),
-            response_content
-        ),
-        status: 200,
-    };
+            let response: ProcessedResponse = ProcessedResponse {
+                data: format!(
+                    "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
+                    response_status,
+                    response_content.len(),
+                    response_content
+                ),
+                status: 200,
+            };
 
-    Ok(response)
+            Ok(response)
+        }
+        Err(error) => {
+            let response: ProcessedResponse = ProcessedResponse {
+                data: format!("HTTP/1.1 {}\r\nContent-Length: 0\r", error,),
+                status: error,
+            };
+
+            Ok(response)
+        }
+    }
 }
 
-fn parse_request(request_raw: &str) -> Result<HttpRequest, i16> {
+fn parse_request(request_raw: &str) -> Result<HttpRequest, u16> {
     // TODO: study if better to use match
     if let Some((heading, rest)) = request_raw.split_once("\n") {
         // Process heading
@@ -75,7 +84,7 @@ fn parse_request(request_raw: &str) -> Result<HttpRequest, i16> {
     Err(400)
 }
 
-fn parse_request_block(request_block: &str) -> Result<HttpRequestLine, i16> {
+fn parse_request_block(request_block: &str) -> Result<HttpRequestLine, u16> {
     let [method, query, version]: [&str; 3] = request_block
         .split_whitespace()
         .collect::<Vec<&str>>()
@@ -92,13 +101,7 @@ fn parse_request_block(request_block: &str) -> Result<HttpRequestLine, i16> {
     Err(400)
 }
 
-fn parse_query(query: &str) -> Result<HttpRequestQuery, i16> {
-    if let Some((path, params)) = query.split_once("?") {
-        if let Ok(params) = parse_query_params(params) {
-            return Ok(HttpRequestQuery { path, params });
-        }
-    };
-
+fn parse_query(query: &str) -> Result<HttpRequestQuery, u16> {
     match query.split_once("?") {
         Some((path, params)) => {
             if let Ok(params) = parse_query_params(params) {
@@ -115,7 +118,18 @@ fn parse_query(query: &str) -> Result<HttpRequestQuery, i16> {
     Err(400)
 }
 
-fn parse_query_params(query: &str) -> Result<QueryParams, i16> {
-    Ok(HashMap::new())
-    // Err(400)
+fn parse_query_params(query: &str) -> Result<QueryParams, u16> {
+    let mut param_map: HashMap<&str, &str> = HashMap::new();
+
+    let param_list = query.split("&");
+
+    for param in param_list {
+        if let Some((key, param)) = param.split_once("=") {
+            param_map.insert(key, param);
+        } else {
+            return Err(400);
+        }
+    }
+
+    Ok(param_map)
 }
