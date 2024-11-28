@@ -1,0 +1,8 @@
+style_edition = "2015"
+use_small_heuristics = "Default"
+merge_derives = true
+reorder_imports = true
+group_imports = "StdExternalCrate"
+imports_granularity = "Module"
+
+ignore = ["/target"]
