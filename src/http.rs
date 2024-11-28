@@ -3,13 +3,20 @@ use std::fs;
 use std::io::prelude::*;
 use std::net::TcpStream;
 
+// TODO:
+//  - we could complement status with a struct that stores the status and the error message.
+//  - an alternative is to have a status-error_mesage mapper in order to send an error explanation to the client
+type Status = u16;
+type Body<'a> = Option<&'a str>;
+
+#[derive(Debug)]
 pub struct ProcessedResponse {
     pub data: String,
-    status: u16,
+    status: Status,
 }
 
 type QueryParams<'a> = HashMap<&'a str, &'a str>;
-type Headers = HashMap<String, String>;
+type Headers<'a> = HashMap<&'a str, &'a str>;
 
 #[derive(Debug)]
 struct HttpRequestQuery<'a> {
@@ -27,14 +34,15 @@ struct HttpRequestLine<'a> {
 #[derive(Debug)]
 struct HttpRequest<'a> {
     request: HttpRequestLine<'a>,
-    headers: Headers,
-    body: Option<String>,
+    headers: Headers<'a>,
+    body: Body<'a>,
 }
 
-pub fn process_petition(stream: &mut TcpStream) -> std::io::Result<ProcessedResponse> {
+pub fn process_petition(stream: &mut TcpStream) -> ProcessedResponse {
     let mut buffer = [0; 1024]; // TODO: manage this size
-    let _amount = stream.read(&mut buffer)?;
+    let _amount = stream.read(&mut buffer);
     let petition = String::from_utf8_lossy(&buffer[..]);
+    println!("Petition: {:?}", petition);
     let petition = parse_request(&petition);
 
     match petition {
@@ -53,38 +61,46 @@ pub fn process_petition(stream: &mut TcpStream) -> std::io::Result<ProcessedResp
                 status: 200,
             };
 
-            Ok(response)
+            response
         }
         Err(error) => {
             let response: ProcessedResponse = ProcessedResponse {
-                data: format!("HTTP/1.1 {}\r\nContent-Length: 0\r", error,),
+                data: format!("HTTP/1.1 {}\r\nContent-Length: 0\r\n\r\n", error),
                 status: error,
             };
 
-            Ok(response)
+            response
         }
     }
 }
 
-fn parse_request(request_raw: &str) -> Result<HttpRequest, u16> {
+fn parse_request(request_raw: &str) -> Result<HttpRequest, Status> {
     // TODO: study if better to use match
     if let Some((heading, rest)) = request_raw.split_once("\n") {
-        // Process heading
-        // split heading with split_whitespace
-        // for (i, line) in request_raw.enumerate() {
-        // }
-        let request = parse_request_block(heading);
-        println!("This is a raw request: {:?}", request);
-        if let Some((headers, body)) = rest.split_once("\n\n") {
-            // Process headers and body
-            // split headers over ":"
+        if let Ok(request) = parse_request_block(heading) {
+            if let Some((headers, body)) = rest.split_once("\n\r\n") {
+                if let Ok(headers) = parse_headers(headers) {
+                    let body: Body = {
+                        if body.len() > 0 {
+                            Some(body)
+                        } else {
+                            None
+                        }
+                    };
+                    return Ok(HttpRequest {
+                        request,
+                        headers,
+                        body,
+                    });
+                }
+            }
         }
     }
 
     Err(400)
 }
 
-fn parse_request_block(request_block: &str) -> Result<HttpRequestLine, u16> {
+fn parse_request_block(request_block: &str) -> Result<HttpRequestLine, Status> {
     let [method, query, version]: [&str; 3] = request_block
         .split_whitespace()
         .collect::<Vec<&str>>()
@@ -101,7 +117,7 @@ fn parse_request_block(request_block: &str) -> Result<HttpRequestLine, u16> {
     Err(400)
 }
 
-fn parse_query(query: &str) -> Result<HttpRequestQuery, u16> {
+fn parse_query(query: &str) -> Result<HttpRequestQuery, Status> {
     match query.split_once("?") {
         Some((path, params)) => {
             if let Ok(params) = parse_query_params(params) {
@@ -118,7 +134,7 @@ fn parse_query(query: &str) -> Result<HttpRequestQuery, u16> {
     Err(400)
 }
 
-fn parse_query_params(query: &str) -> Result<QueryParams, u16> {
+fn parse_query_params(query: &str) -> Result<QueryParams, Status> {
     let mut param_map: HashMap<&str, &str> = HashMap::new();
 
     let param_list = query.split("&");
@@ -132,4 +148,20 @@ fn parse_query_params(query: &str) -> Result<QueryParams, u16> {
     }
 
     Ok(param_map)
+}
+
+fn parse_headers(headers: &str) -> Result<Headers, Status> {
+    let mut header_map: Headers = HashMap::new();
+
+    let header_list = headers.split("\n");
+
+    for header in header_list {
+        if let Some((key, value)) = header.split_once(":") {
+            header_map.insert(key, value);
+        } else {
+            return Err(400);
+        }
+    }
+
+    Ok(header_map)
 }

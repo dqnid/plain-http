@@ -16,20 +16,8 @@ fn main() {
         let response = http::process_petition(&mut _stream);
 
         // TODO: manage error case
-        match response {
-            Ok(data) => {
-                let _amount = _stream.write(data.data.as_bytes()).unwrap();
-            }
-            Err(e) => {
-                println!("Error: {:?}", e);
-                let _amount = _stream
-                    .write(
-                        "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n"
-                            .as_bytes(),
-                    )
-                    .unwrap();
-            }
-        }
+        println!("About to responde: {:?}", response);
+        let _amount = _stream.write(response.data.as_bytes()).unwrap();
         _stream.flush().unwrap();
     }
 }
