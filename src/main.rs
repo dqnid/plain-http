@@ -16,7 +16,6 @@ fn main() {
         let response = http::process_petition(&mut _stream);
 
         // TODO: manage error case
-        println!("About to responde: {:?}", response);
         let _amount = _stream.write(response.data.as_bytes()).unwrap();
         _stream.flush().unwrap();
     }

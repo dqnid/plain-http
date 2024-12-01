@@ -1,80 +1,8 @@
 use std::collections::HashMap;
-use std::fs;
-use std::io::prelude::*;
-use std::net::TcpStream;
 
-// TODO:
-//  - we could complement status with a struct that stores the status and the error message.
-//  - an alternative is to have a status-error_mesage mapper in order to send an error explanation to the client
-type Status = u16;
-type Body<'a> = Option<&'a str>;
+use super::*;
 
-#[derive(Debug)]
-pub struct ProcessedResponse {
-    pub data: String,
-    status: Status,
-}
-
-type QueryParams<'a> = HashMap<&'a str, &'a str>;
-type Headers<'a> = HashMap<&'a str, &'a str>;
-
-#[derive(Debug)]
-struct HttpRequestQuery<'a> {
-    path: &'a str,
-    params: QueryParams<'a>,
-}
-
-#[derive(Debug)]
-struct HttpRequestLine<'a> {
-    method: &'a str,
-    version: &'a str,
-    query: HttpRequestQuery<'a>,
-}
-
-#[derive(Debug)]
-struct HttpRequest<'a> {
-    request: HttpRequestLine<'a>,
-    headers: Headers<'a>,
-    body: Body<'a>,
-}
-
-pub fn process_petition(stream: &mut TcpStream) -> ProcessedResponse {
-    let mut buffer = [0; 1024]; // TODO: manage this size
-    let _amount = stream.read(&mut buffer);
-    let petition = String::from_utf8_lossy(&buffer[..]);
-    println!("Petition: {:?}", petition);
-    let petition = parse_request(&petition);
-
-    match petition {
-        Ok(petition_parsed) => {
-            let response_status = "200 OK";
-
-            let response_content = fs::read_to_string("./index.html").unwrap();
-
-            let response: ProcessedResponse = ProcessedResponse {
-                data: format!(
-                    "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
-                    response_status,
-                    response_content.len(),
-                    response_content
-                ),
-                status: 200,
-            };
-
-            response
-        }
-        Err(error) => {
-            let response: ProcessedResponse = ProcessedResponse {
-                data: format!("HTTP/1.1 {}\r\nContent-Length: 0\r\n\r\n", error),
-                status: error,
-            };
-
-            response
-        }
-    }
-}
-
-fn parse_request(request_raw: &str) -> Result<HttpRequest, Status> {
+pub fn parse_request(request_raw: &str) -> Result<HttpRequest, Status> {
     // TODO: study if better to use match
     if let Some((heading, rest)) = request_raw.split_once("\n") {
         if let Ok(request) = parse_request_block(heading) {
