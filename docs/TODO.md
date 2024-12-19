@@ -8,3 +8,7 @@
   - [ ] File management
   - [ ] Auto-cleanup
   - [ ] Transversal utility
+
+## Improvements
+
+- [ ] Check any potential error in Request Parsing and return a 500 error.

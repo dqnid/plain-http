@@ -9,7 +9,7 @@ pub type Body<'a> = Option<&'a str>;
 #[derive(Debug)]
 pub struct ProcessedResponse {
     pub data: String,
-    pub status: Status,
+    pub status: Status, // NOTE: this is dupped, but might be useful so I'll keep it
 }
 
 pub type QueryParams<'a> = HashMap<&'a str, &'a str>;
