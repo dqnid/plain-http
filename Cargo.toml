@@ -1,6 +1,9 @@
 [package]
-name = "rust-http-server"
+name = "plain-http"
 version = "0.1.0"
 edition = "2021"
+description = "Simple http library"
+keywords = ["web", "http", "backend", "frontend"]
+authors = ["Daniel Heras Quesada"]
 
 [dependencies]

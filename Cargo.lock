@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "rust-http-server"
+name = "plain-http"
 version = "0.1.0"

@@ -1,5 +1,27 @@
 use std::collections::HashMap;
 
+/*
+ * App types
+ * */
+pub struct HttpAppConfig {
+    port: u8,
+}
+
+pub type HttpAppRouteFunction = Box<dyn Fn(HttpRequest) -> String>;
+
+pub struct HttpAppRoute<'a> {
+    route: &'a str,
+    action: HttpAppRouteFunction,
+}
+
+pub struct HttpApp<'a> {
+    config: HttpAppConfig,
+    routes: Vec<HttpAppRoute<'a>>,
+}
+
+/*
+ * Parser types
+ * */
 // TODO:
 //  - we could complement status with a struct that stores the status and the error message.
 //  - an alternative is to have a status-error_mesage mapper in order to send an error explanation to the client
