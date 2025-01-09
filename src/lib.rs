@@ -21,6 +21,9 @@ fn principal() {
     }
 }
 
+// NOTE: example function:
+// let response_content = fs::read_to_string("./routes/index.html").unwrap();
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
