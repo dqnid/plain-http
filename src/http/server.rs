@@ -1,16 +1,11 @@
 use std::fs;
 use std::io::prelude::*;
-use std::net::TcpStream;
+use std::net::{SocketAddr, TcpListener, TcpStream};
 
 use super::*;
 
-struct HTTPServer<'a> {
-    config: HttpAppConfig,
-    routes: Vec<HttpAppRoute<'a>>,
-}
-
-impl HTTPServer<'_> {
-    fn get_route(&self, path: &str) -> Option<&HttpAppRoute> {
+impl HttpApp {
+    fn get_route(&self, _path: &str) -> Option<&HttpAppRoute> {
         self.routes.first() // TODO: search the real one
     }
 
@@ -24,11 +19,10 @@ impl HTTPServer<'_> {
             Ok(petition_parsed) => {
                 let response_status = "200 OK";
 
-                let response_content = fs::read_to_string("./routes/index.html").unwrap();
-                let route = self.get_route(petition_parsed.request.query.path);
+                let mut response_content = fs::read_to_string("./routes/index.html").unwrap();
 
-                if let Some(route) = route {
-                    // TODO: call function and generate response
+                if let Some(route) = self.get_route(petition_parsed.request.query.path) {
+                    response_content = (route.action)(petition_parsed);
                 } else {
                     // TODO: return not found
                 }
@@ -53,6 +47,24 @@ impl HTTPServer<'_> {
 
                 response
             }
+        }
+    }
+
+    fn start(&self) {
+        let addr = SocketAddr::from(([127, 0, 0, 1], 80));
+
+        let listener = TcpListener::bind(addr).unwrap();
+
+        println!("Server up and running!");
+
+        for stream in listener.incoming() {
+            let mut _stream = stream.unwrap();
+            println!("Connection established!");
+            let response = self.process_petition(&mut _stream);
+
+            // TODO: manage error case
+            let _amount = _stream.write(response.data.as_bytes()).unwrap();
+            _stream.flush().unwrap();
         }
     }
 }

@@ -7,16 +7,16 @@ pub struct HttpAppConfig {
     port: u8,
 }
 
-pub type HttpAppRouteFunction = Box<dyn Fn(HttpRequest) -> String>;
+pub type HttpAppRouteFunction = Box<fn(HttpRequest) -> String>;
 
-pub struct HttpAppRoute<'a> {
-    route: &'a str,
-    action: HttpAppRouteFunction,
+pub struct HttpAppRoute {
+    pub route: String,
+    pub action: HttpAppRouteFunction,
 }
 
-pub struct HttpApp<'a> {
-    config: HttpAppConfig,
-    routes: Vec<HttpAppRoute<'a>>,
+pub struct HttpApp {
+    pub config: HttpAppConfig,
+    pub routes: Vec<HttpAppRoute>,
 }
 
 /*
