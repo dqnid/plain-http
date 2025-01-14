@@ -1,6 +1,6 @@
 # TODO
-- [ ] Manage requests
-- [ ] Router
+- [x] Manage requests
+- [x] Router
 - [NOT NEEDED] HTTP code mapper : not needed because a code will be directly translated on the client (browser / postman)
 - [ ] JS / CSS data
 - [ ] Media manager
@@ -8,6 +8,8 @@
   - [ ] File management
   - [ ] Auto-cleanup
   - [ ] Transversal utility
+- [ ] Let programmer set the default not found response
+- [ ] Allow middleware
 
 ## Improvements
 

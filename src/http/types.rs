@@ -4,7 +4,7 @@ use std::collections::HashMap;
  * App types
  * */
 pub struct HttpAppConfig {
-    port: u8,
+    pub port: u16,
 }
 
 pub type HttpAppRouteFunction = Box<fn(HttpRequest) -> String>;
