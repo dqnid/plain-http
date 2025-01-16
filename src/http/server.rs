@@ -1,10 +1,29 @@
-use std::fs;
+use std::collections::HashMap;
 use std::io::prelude::*;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 
 use super::*;
 
-impl HttpApp {
+impl Default for HttpAppConfig {
+    fn default() -> Self {
+        Self {
+            port: 3000,
+            max_buffer_size_bytes: 5120,
+        }
+    }
+}
+
+impl Default for HttpApp<'_> {
+    fn default() -> Self {
+        Self {
+            config: Default::default(),
+            routes: vec![],
+            default_headers: HashMap::new(),
+        }
+    }
+}
+
+impl HttpApp<'_> {
     fn get_route(&self, _path: &str) -> Option<&HttpAppRoute> {
         self.routes.first() // TODO: search the real one
     }
@@ -21,37 +40,22 @@ impl HttpApp {
 
         match petition {
             Ok(petition_parsed) => {
-                let response_status = "200 OK";
-
                 // let mut response_content = fs::read_to_string("./routes/index.html").unwrap();
-                let mut response_content = "".to_string();
-
                 if let Some(route) = self.get_route(petition_parsed.request.query.path) {
-                    response_content = (route.action)(petition_parsed);
+                    let matched_route = (route.action)(petition_parsed);
+                    return format_response(matched_route);
                 } else {
                     // TODO: return not found
+                    return ProcessedResponse {
+                        data: "".to_string(),
+                        status: 400,
+                    };
                 }
-
-                let response: ProcessedResponse = ProcessedResponse {
-                    data: format!(
-                        "HTTP/1.1 {}\r\nContent-Length: {}\r\n\r\n{}",
-                        response_status,
-                        response_content.len(),
-                        response_content
-                    ),
-                    status: 200,
-                };
-
-                response
             }
-            Err(error) => {
-                let response: ProcessedResponse = ProcessedResponse {
-                    data: format!("HTTP/1.1 {}\r\nContent-Length: 0\r\n\r\n", error),
-                    status: error,
-                };
-
-                response
-            }
+            Err(error) => ProcessedResponse {
+                data: format!("HTTP/1.1 {}\r\nContent-Length: 0\r\n\r\n", error),
+                status: error,
+            },
         }
     }
 

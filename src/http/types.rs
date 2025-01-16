@@ -5,18 +5,27 @@ use std::collections::HashMap;
  * */
 pub struct HttpAppConfig {
     pub port: u16,
+    pub max_buffer_size_bytes: usize,
 }
 
-pub type HttpAppRouteFunction = Box<fn(HttpRequest) -> String>;
+pub type HttpAppRouteFunction = Box<fn(HttpRequest) -> HttpAppRouteResponse>;
 
 pub struct HttpAppRoute {
     pub route: String,
     pub action: HttpAppRouteFunction,
 }
 
-pub struct HttpApp {
+pub struct HttpApp<'a> {
     pub config: HttpAppConfig,
     pub routes: Vec<HttpAppRoute>,
+    pub default_headers: Headers<'a>,
+}
+
+pub struct HttpAppRouteResponse<'a> {
+    pub body: String,
+    pub content_type: &'a str,
+    pub status: Status,
+    pub headers: Headers<'a>,
 }
 
 /*
