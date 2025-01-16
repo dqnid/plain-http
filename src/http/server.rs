@@ -33,9 +33,34 @@ impl HttpApp<'_> {
     }
 
     pub fn process_petition(&self, stream: &mut TcpStream) -> ProcessedResponse {
-        let mut buffer = [0; 1024]; // TODO: manage this size
-        let _amount = stream.read(&mut buffer);
-        let petition = String::from_utf8_lossy(&buffer[..]);
+        let mut petition = String::new();
+        const BUFFER_SIZE: usize = 1024;
+
+        loop {
+            let mut buffer = [0; BUFFER_SIZE];
+            let amount = stream.read(&mut buffer);
+            match amount {
+                Ok(size_read) => {
+                    if size_read < 1 {
+                        break;
+                    }
+
+                    let buffer_string = String::from_utf8_lossy(&buffer[..]);
+                    petition.push_str(&buffer_string);
+
+                    if size_read < BUFFER_SIZE {
+                        break;
+                    }
+                }
+                Err(_e) => {
+                    break;
+                }
+            }
+            if petition.bytes().len() > self.config.max_buffer_size_bytes {
+                break;
+            }
+        }
+
         let petition = parse_request(&petition);
 
         match petition {
