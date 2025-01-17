@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fs;
 use std::io::prelude::*;
 use std::net::{SocketAddr, TcpListener, TcpStream};
 
@@ -8,7 +9,7 @@ impl Default for HttpAppConfig {
     fn default() -> Self {
         Self {
             port: 3000,
-            max_buffer_size_bytes: 5120,
+            max_request_size_bytes: 5120,
         }
     }
 }
@@ -23,12 +24,26 @@ impl Default for HttpApp<'_> {
     }
 }
 
+impl HttpAppRouteResponse<'_> {
+    pub fn from_url(url: &str) -> Self {
+        let response_body = fs::read_to_string(url).unwrap();
+        Self {
+            body: response_body,
+            content_type: "text/html; charset=utf-8",
+            status: 200,
+            headers: HashMap::new(),
+        }
+    }
+}
+
 impl HttpApp<'_> {
-    fn get_route(&self, _path: &str) -> Option<&HttpAppRoute> {
-        self.routes.first() // TODO: search the real one
+    fn get_route(&self, path: &str) -> Option<&HttpAppRoute> {
+        // self.routes.first() // TODO: search the real one
+        self.routes.iter().find(|&route| route.route.eq(path))
     }
 
     pub fn add_route(&mut self, route: HttpAppRoute) {
+        // TODO: check if already exists
         self.routes.push(route);
     }
 
@@ -56,7 +71,10 @@ impl HttpApp<'_> {
                     break;
                 }
             }
-            if petition.bytes().len() > self.config.max_buffer_size_bytes {
+            // FIXME: this does not cover marginal cases: bigger buffer than max_buffer
+            if self.config.max_request_size_bytes > 0
+                && petition.bytes().len() > self.config.max_request_size_bytes
+            {
                 break;
             }
         }
@@ -65,14 +83,13 @@ impl HttpApp<'_> {
 
         match petition {
             Ok(petition_parsed) => {
-                // let mut response_content = fs::read_to_string("./routes/index.html").unwrap();
                 if let Some(route) = self.get_route(petition_parsed.request.query.path) {
                     let matched_route = (route.action)(petition_parsed);
                     return format_response(matched_route);
                 } else {
                     // TODO: return not found
                     return ProcessedResponse {
-                        data: "".to_string(),
+                        data: "Error 404".to_string(),
                         status: 400,
                     };
                 }

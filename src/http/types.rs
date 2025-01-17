@@ -5,7 +5,7 @@ use std::collections::HashMap;
  * */
 pub struct HttpAppConfig {
     pub port: u16,
-    pub max_buffer_size_bytes: usize,
+    pub max_request_size_bytes: usize, // 0 to not max
 }
 
 pub type HttpAppRouteFunction = Box<fn(HttpRequest) -> HttpAppRouteResponse>;

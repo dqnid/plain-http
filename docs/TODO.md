@@ -11,8 +11,10 @@
   - [ ] Transversal utility
 - [ ] Let programmer set the default not found response
 - [x] Manage basic defaults app and route headers
-- [ ] Manage route specific headers
+- [x] Manage route specific headers
 - [ ] Allow middleware
+    - [ ] Middleware to redirect or block petitions
+    - [ ] Middleware to insert headers and data
 - [ ] Study how to organize functions on structs or types if possible
 
 ## Improvements
